@@ -1,7 +1,7 @@
 import json
 import threading
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, font
 import logging
 import requests
 import re
@@ -21,6 +21,7 @@ class InputMethodApp:
         self.input_mode = tk.StringVar(value="双拼")
         self.use_post_processing = tk.BooleanVar(value=True)
         self.trigger_symbol = tk.StringVar(value=".")
+        self.font_size = tk.IntVar(value=12)
 
         # 创建主界面
         self.create_main_interface()
@@ -58,6 +59,21 @@ class InputMethodApp:
         # 设置按钮
         settings_button = ttk.Button(self.master, text="设置", command=self.open_settings)
         settings_button.pack(pady=10)
+
+        # 字体大小调整
+        font_frame = ttk.Frame(self.master)
+        font_frame.pack(pady=10)
+        ttk.Label(font_frame, text="字体大小:").pack(side=tk.LEFT)
+        ttk.Spinbox(font_frame, from_=8, to=24, textvariable=self.font_size, command=self.update_font_size, width=5).pack(side=tk.LEFT)
+
+        # 初始化字体
+        self.update_font_size()
+
+    def update_font_size(self):
+        current_font = font.Font(font=self.input_text['font'])
+        new_font = font.Font(family=current_font.actual()['family'], size=self.font_size.get())
+        self.input_text.configure(font=new_font)
+        self.output_text.configure(font=new_font)
 
     def check_for_conversion(self, event):
         current_text = self.input_text.get("1.0", tk.END).strip()
@@ -98,7 +114,7 @@ class InputMethodApp:
         ttk.Entry(settings_window, textvariable=self.api_key, show="*").grid(row=2, column=1, padx=5, pady=5)
 
         ttk.Label(settings_window, text="输入模式:").grid(row=3, column=0, sticky="e", padx=5, pady=5)
-        ttk.Combobox(settings_window, textvariable=self.input_mode, values=["双拼", "拼音"]).grid(row=3, column=1, padx=5, pady=5)
+        ttk.Combobox(settings_window, textvariable=self.input_mode, values=["双拼", "全拼"]).grid(row=3, column=1, padx=5, pady=5)
 
         ttk.Label(settings_window, text="使用后处理:").grid(row=4, column=0, sticky="e", padx=5, pady=5)
         ttk.Checkbutton(settings_window, variable=self.use_post_processing).grid(row=4, column=1, padx=5, pady=5, sticky="w")
@@ -115,7 +131,8 @@ class InputMethodApp:
             "api_key": self.api_key.get(),
             "input_mode": self.input_mode.get(),
             "use_post_processing": self.use_post_processing.get(),
-            "trigger_symbol": self.trigger_symbol.get()
+            "trigger_symbol": self.trigger_symbol.get(),
+            "font_size": self.font_size.get()
         }
         with open("settings.json", "w") as f:
             json.dump(settings, f)
@@ -132,6 +149,8 @@ class InputMethodApp:
             self.input_mode.set(settings.get("input_mode", "双拼"))
             self.use_post_processing.set(settings.get("use_post_processing", True))
             self.trigger_symbol.set(settings.get("trigger_symbol", "."))
+            self.font_size.set(settings.get("font_size", 12))
+            self.update_font_size()
             logging.debug("设置已加载")
         except FileNotFoundError:
             logging.debug("未找到设置文件，使用默认设置")
@@ -140,7 +159,7 @@ class InputMethodApp:
         if self.input_mode.get() == "双拼":
             return double_pinyin_to_pinyin(text)
         else:
-            return text  # 拼音模式不需要转换
+            return text  # 全拼模式不需要转换
 
     def call_api(self, prompt):
         logging.debug(f"调用API: {prompt}")
